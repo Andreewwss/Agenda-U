@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agenda para Estudiantes - Guardado Local</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      padding: 20px;
+      background: #f9f9f9;
+    }
+    .section {
+      background: white;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+    }
+    h2 {
+      margin-bottom: 15px;
+    }
+    td[contenteditable="true"] {
+      min-width: 100px;
+      height: 40px;
+      cursor: text;
+      border: 1px solid transparent;
+    }
+    td[contenteditable="true"]:focus {
+      outline: none;
+      border: 1px solid #0d6efd;
+      background: #e7f1ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="mb-4">Agenda para Estudiantes Universitarios</h1>
+
+    <div class="section" id="calendario">
+      <h2>Calendario Semanal</h2>
+      <table class="table table-bordered text-center">
+        <thead>
+          <tr>
+            <th>Hora</th>
+            <th>Lunes</th>
+            <th>Martes</th>
+            <th>Miércoles</th>
+            <th>Jueves</th>
+            <th>Viernes</th>
+            <th>Sábado</th>
+            <th>Domingo</th>
+          </tr>
+        </thead>
+        <tbody id="calendar-body"></tbody>
+      </table>
+      <button id="guardar-calendario" class="btn btn-primary mb-3">Guardar Calendario</button>
+    </div>
+
+    <div class="section" id="tareas">
+      <h2>Alertas para Entrega de Tareas</h2>
+      <form id="tarea-form" class="mb-3 d-flex gap-2">
+        <input type="text" id="tarea-desc" class="form-control" placeholder="Descripción de la tarea" required />
+        <input type="date" id="tarea-fecha" class="form-control" required />
+        <button type="submit" class="btn btn-primary">Agregar Tarea</button>
+      </form>
+      <ul class="list-group" id="lista-tareas"></ul>
+    </div>
+
+    <div class="section" id="habitos">
+      <h2>Registro de Hábitos</h2>
+      <form id="habito-form" class="mb-3 d-flex gap-2">
+        <input type="text" id="habito-nombre" class="form-control" placeholder="Nombre del hábito" required />
+        <input
+          type="number"
+          id="habito-frecuencia"
+          class="form-control"
+          min="1"
+          max="7"
+          placeholder="Frecuencia semanal"
+          required
+        />
+        <button type="submit" class="btn btn-success">Agregar Hábito</button>
+      </form>
+      <ul class="list-group" id="lista-habitos"></ul>
+    </div>
+
+    <div class="section" id="objetivos">
+      <h2>Seguimiento de Objetivos</h2>
+      <form id="objetivo-form" class="mb-3 d-flex gap-2">
+        <input type="text" id="objetivo-desc" class="form-control" placeholder="Describe tu objetivo" required />
+        <button type="submit" class="btn btn-warning">Agregar Objetivo</button>
+      </form>
+      <ul class="list-group" id="lista-objetivos"></ul>
+    </div>
+  </div>
+
+  <script>
+    // Crear calendario editable y guardar/recuperar desde localStorage
+
+    const calendarBody = document.getElementById('calendar-body');
+    const guardarBtn = document.getElementById('guardar-calendario');
+    const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+    const horas = [];
+
+    for (let hour = 7; hour <= 21; hour++) horas.push(hour);
+
+    function crearCalendario() {
+      calendarBody.innerHTML = '';
+      for (let h of horas) {
+        const tr = document.createElement('tr');
+        const tdHora = document.createElement('td');
+        tdHora.textContent = `${h}:00`;
+        tr.appendChild(tdHora);
+
+        for (let d = 0; d < 7; d++) {
+          const td = document.createElement('td');
+          td.contentEditable = true;
+          td.dataset.dia = dias[d];
+          td.dataset.hora = h;
+          tr.appendChild(td);
+        }
+        calendarBody.appendChild(tr);
+      }
+    }
+
+    function guardarCalendario() {
+      const datos = {};
+      for (let td of calendarBody.querySelectorAll('td[contenteditable]')) {
+        if (td.textContent.trim() !== '') {
+          const key = `${td.dataset.dia}-${td.dataset.hora}`;
+          datos[key] = td.textContent.trim();
+        }
+      }
+      localStorage.setItem('calendario', JSON.stringify(datos));
+      alert('Calendario guardado!');
+    }
+
+    function cargarCalendario() {
+      const datos = JSON.parse(localStorage.getItem('calendario'));
+      if (!datos) return;
+      for (let td of calendarBody.querySelectorAll('td[contenteditable]')) {
+        const key = `${td.dataset.dia}-${td.dataset.hora}`;
+        td.textContent = datos[key] || '';
+      }
+    }
+
+    guardarBtn.addEventListener('click', guardarCalendario);
+
+    crearCalendario();
+    cargarCalendario();
+
+    // Manejo de tareas con localStorage
+
+    const tareaForm = document.getElementById('tarea-form');
+    const listaTareas = document.getElementById('lista-tareas');
+
+    function guardarTareas() {
+      const tareas = [];
+      for (let li of listaTareas.children) {
+        tareas.push({
+          desc: li.dataset.desc,
+          fecha: li.dataset.fecha,
+        });
+      }
+      localStorage.setItem('tareas', JSON.stringify(tareas));
+    }
+
+    function cargarTareas() {
+      const tareas = JSON.parse(localStorage.getItem('tareas')) || [];
+      listaTareas.innerHTML = '';
+      for (let t of tareas) {
+        agregarTareaUI(t.desc, t.fecha);
+      }
+    }
+
+    function agregarTareaUI(desc, fecha) {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex justify-content-between align-items-center';
+      li.textContent = `${desc} - Fecha: ${fecha}`;
+      li.dataset.desc = desc;
+      li.dataset.fecha = fecha;
+
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-sm btn-danger';
+      btn.textContent = 'Eliminar';
+      btn.onclick = () => {
+        listaTareas.removeChild(li);
+        guardarTareas();
+      };
+      li.appendChild(btn);
+      listaTareas.appendChild(li);
+    }
+
+    tareaForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const desc = document.getElementById('tarea-desc').value.trim();
+      const fecha = document.getElementById('tarea-fecha').value;
+      if (!desc || !fecha) return;
+
+      agregarTareaUI(desc, fecha);
+      guardarTareas();
+
+      tareaForm.reset();
+      checkAlerta(fecha, desc);
+    });
+
+    // Alerta simple para tareas próximas
+    function checkAlerta(fecha, desc) {
+      const hoy = new Date();
+      const fechaTarea = new Date(fecha);
+      const diff = (fechaTarea - hoy) / (1000 * 60 * 60 * 24);
+      if (diff <= 1 && diff >= 0) {
+        alert(`¡Alerta! La tarea "${desc}" vence hoy o mañana.`);
+      }
+    }
+
+    cargarTareas();
+
+    // Manejo de hábitos con localStorage
+
+    const habitoForm = document.getElementById('habito-form');
+    const listaHabitos = document.getElementById('lista-habitos');
+
+    function guardarHabitos() {
+      const habitos = [];
+      for (let li of listaHabitos.children) {
+        habitos.push({
+          nombre: li.dataset.nombre,
+          frecuencia: li.dataset.frecuencia,
+        });
+      }
+      localStorage.setItem('habitos', JSON.stringify(habitos));
+    }
+
+    function cargarHabitos() {
+      const habitos = JSON.parse(localStorage.getItem('habitos')) || [];
+      listaHabitos.innerHTML = '';
+      for (let h of habitos) {
+        agregarHabitoUI(h.nombre, h.frecuencia);
+      }
+    }
+
+    function agregarHabitoUI(nombre, frecuencia) {
+      const li = document.createElement('li');
+      li.className = 'list-group-item';
+      li.textContent = `${nombre} - Frecuencia semanal: ${frecuencia} días`;
+      li.dataset.nombre = nombre;
+      li.dataset.frecuencia = frecuencia;
+      listaHabitos.appendChild(li);
+    }
+
+    habitoForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const nombre = document.getElementById('habito-nombre').value.trim();
+      const frecuencia = document.getElementById('habito-frecuencia').value;
+      if (!nombre || !frecuencia) return;
+
+      agregarHabitoUI(nombre, frecuencia);
+      guardarHabitos();
+
+      habitoForm.reset();
+    });
+
+    cargarHabitos();
+
+    // Manejo de objetivos con localStorage
+
+    const objetivoForm = document.getElementById('objetivo-form');
+    const listaObjetivos = document.getElementById('lista-objetivos');
+
+    function guardarObjetivos() {
+      const objetivos = [];
+      for (let li of listaObjetivos.children) {
+        objetivos.push(li.textContent);
+      }
+      localStorage.setItem('objetivos', JSON.stringify(objetivos));
+    }
+
+    function cargarObjetivos() {
+      const objetivos = JSON.parse(localStorage.getItem('objetivos')) || [];
+      listaObjetivos.innerHTML = '';
+      for (let o of objetivos) {
+        agregarObjetivoUI(o);
+      }
+    }
+
+    function agregarObjetivoUI(desc) {
+      const li = document.createElement('li');
+      li.className = 'list-group-item';
+      li.textContent = desc;
+      listaObjetivos.appendChild(li);
+    }
+
+    objetivoForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const desc = document.getElementById('objetivo-desc').value.trim();
+      if (!desc) return;
+
+      agregarObjetivoUI(desc);
+      guardarObjetivos();
+
+      objetivoForm.reset();
+    });
+
+    cargarObjetivos();
+  </script>
+</body>
+</html>
